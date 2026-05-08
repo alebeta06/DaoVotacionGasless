@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Foundry (sc/)
+sc/cache/
+sc/out/
+sc/broadcast/
+sc/forge-cache/
+sc/lib/
+
+# Node / Next.js (web/)
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+logs/
