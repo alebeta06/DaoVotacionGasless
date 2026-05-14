@@ -58,7 +58,7 @@ DaoVotacionGasless/
 | Smart contracts | Solidity | ^0.8.24 |
 | Build / test | Foundry (forge, anvil, cast) | latest |
 | Librerías SC | OpenZeppelin Contracts | ^5.x |
-| Frontend | Next.js (App Router) | 15.x |
+| Frontend | Next.js (App Router) | 16.x (probado con 16.2) |
 | Lenguaje frontend | TypeScript | strict |
 | Estilos | Tailwind CSS | v4 |
 | Web3 lib | ethers.js | v6 |

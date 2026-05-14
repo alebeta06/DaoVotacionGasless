@@ -168,7 +168,7 @@ Al final de esta fase, tomamos las dos addresses y las metemos en `web/.env.loca
 
 ---
 
-## Fase 5 — Bootstrap del frontend
+## Fase 5 — Bootstrap del frontend ✅
 
 **Objetivo:** Next.js andando y MetaMask conectada.
 
