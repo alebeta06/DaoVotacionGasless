@@ -68,6 +68,10 @@ export function CreateProposal() {
             }
             setStatus("success");
             bumpRefresh();
+            setTimeout(() => {
+                setStatus((current) => (current === "success" ? "idle" : current));
+                setCreatedId(null);
+            }, 2500);
         } catch (err) {
             setError(prettifyError(err));
             setStatus("error");
@@ -124,7 +128,7 @@ export function CreateProposal() {
                 type="button"
                 onClick={submit}
                 disabled={busy || !dao}
-                className="self-start rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+                className="self-start min-w-30 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
             >
                 {status === "signing" && "Firmando…"}
                 {status === "pending" && "Confirmando…"}
