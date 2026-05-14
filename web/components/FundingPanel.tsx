@@ -43,6 +43,10 @@ export function FundingPanel() {
             await tx.wait();
             setStatus("success");
             bumpRefresh();
+            setTimeout(() => {
+                setStatus((current) => (current === "success" ? "idle" : current));
+                setTxHash(null);
+            }, 2500);
         } catch (err) {
             setError(prettifyError(err));
             setStatus("error");
@@ -57,7 +61,7 @@ export function FundingPanel() {
                 <h2 className="text-sm font-semibold">Depositar ETH al DAO</h2>
                 <p className="text-xs text-zinc-500">Tu balance aumenta y desbloquea poder de voto y propuesta.</p>
             </header>
-            <div className="flex gap-2">
+            <div className="flex gap-2 min-w-0">
                 <input
                     type="number"
                     step="0.01"
@@ -65,13 +69,13 @@ export function FundingPanel() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     disabled={busy}
-                    className="flex-1 rounded-lg border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 font-mono text-sm disabled:opacity-50"
+                    className="flex-1 min-w-0 rounded-lg border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 font-mono text-sm disabled:opacity-50"
                 />
                 <button
                     type="button"
                     onClick={deposit}
                     disabled={busy || !dao}
-                    className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+                    className="shrink-0 min-w-30 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
                 >
                     {status === "signing" && "Firmando…"}
                     {status === "pending" && "Confirmando…"}
