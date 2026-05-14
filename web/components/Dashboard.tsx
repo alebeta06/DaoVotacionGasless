@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { ConnectWallet } from "./ConnectWallet";
 import { CreateProposal } from "./CreateProposal";
 import { DaoStats } from "./DaoStats";
+import { ExecutionPanel } from "./ExecutionPanel";
 import { FundingPanel } from "./FundingPanel";
 import { ProposalList } from "./ProposalList";
 
@@ -40,6 +41,7 @@ export function Dashboard() {
                         <CreateProposal />
                     </div>
                     <ProposalList />
+                    <ExecutionPanel />
                 </>
             )}
         </div>
