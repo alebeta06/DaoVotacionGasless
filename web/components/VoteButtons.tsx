@@ -7,6 +7,7 @@ import MinimalForwarderAbi from "@/lib/abis/MinimalForwarder.json";
 import { env } from "@/lib/env";
 import { buildForwardRequest, postToRelayer, signForwardRequest } from "@/lib/metaTx";
 import { useDao } from "@/lib/useDao";
+import { useReadDao } from "@/lib/useReadDao";
 import { useWallet } from "@/lib/WalletContext";
 
 type Status = "idle" | "signing" | "relaying" | "success" | "error";
@@ -21,17 +22,24 @@ const OPTIONS: { type: VoteType; label: string; className: string }[] = [
 
 export function VoteButtons({ proposalId }: { proposalId: bigint }) {
     const dao = useDao();
+    const readDao = useReadDao();
     const { signer, address, bumpRefresh } = useWallet();
     const [status, setStatus] = useState<Status>("idle");
     const [active, setActive] = useState<VoteType | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     async function vote(voteType: VoteType) {
-        if (!dao || !signer || !address) return;
+        if (!dao || !readDao || !signer || !address) return;
         setError(null);
         setActive(voteType);
-        setStatus("signing");
         try {
+            const balance = (await readDao.balanceOf(address)) as bigint;
+            if (balance === 0n) {
+                setError("Necesitas haber depositado ETH para votar");
+                setStatus("error");
+                return;
+            }
+            setStatus("signing");
             const forwarder = new Contract(env.forwarderAddress, MinimalForwarderAbi, signer);
             const data = dao.interface.encodeFunctionData("vote", [proposalId, voteType]);
             const request = await buildForwardRequest(forwarder, address, env.daoAddress, data);
