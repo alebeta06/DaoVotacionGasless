@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { formatEther } from "ethers";
 
-import { useDao } from "@/lib/useDao";
+import { useReadDao } from "@/lib/useReadDao";
 import { useWallet } from "@/lib/WalletContext";
 
 export function DaoStats() {
-    const dao = useDao();
+    const dao = useReadDao();
     const { address, refreshVersion } = useWallet();
     const [total, setTotal] = useState<bigint | null>(null);
     const [mine, setMine] = useState<bigint | null>(null);

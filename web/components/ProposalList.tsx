@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { useDao } from "@/lib/useDao";
+import { useReadDao } from "@/lib/useReadDao";
 import { useWallet } from "@/lib/WalletContext";
 
 import { ProposalCard, type Proposal } from "./ProposalCard";
 
 export function ProposalList() {
-    const dao = useDao();
+    const dao = useReadDao();
     const { refreshVersion } = useWallet();
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
