@@ -7,6 +7,7 @@ import { ConnectWallet } from "./ConnectWallet";
 import { CreateProposal } from "./CreateProposal";
 import { DaoStats } from "./DaoStats";
 import { FundingPanel } from "./FundingPanel";
+import { ProposalList } from "./ProposalList";
 
 export function Dashboard() {
     const { status } = useWallet();
@@ -38,6 +39,7 @@ export function Dashboard() {
                         <FundingPanel />
                         <CreateProposal />
                     </div>
+                    <ProposalList />
                 </>
             )}
         </div>
