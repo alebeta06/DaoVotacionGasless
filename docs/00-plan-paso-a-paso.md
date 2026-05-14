@@ -14,7 +14,7 @@ Aproximadamente 5 días según el brief del curso. Vamos por capas, **de abajo h
 
 ---
 
-## Fase 0 — Setup del monorepo ✅ (estamos aquí)
+## Fase 0 — Setup del monorepo ✅
 
 **Objetivo:** dejar la estructura base lista y commitear.
 
@@ -137,7 +137,7 @@ forge coverage --match-contract MinimalForwarder
 
 ---
 
-## Fase 4 — Scripts de deployment
+## Fase 4 — Scripts de deployment ✅ (estamos aquí)
 
 **Objetivo:** desplegar a Anvil de manera reproducible.
 
