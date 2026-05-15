@@ -64,6 +64,11 @@
         "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [
@@ -135,6 +140,11 @@
             "name": "deadline",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
           },
           {
             "name": "forVotes",
@@ -271,6 +281,11 @@
         "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "internalType": "string"
       },
       {
         "name": "forVotes",
@@ -421,6 +436,12 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -471,12 +492,6 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "enum DAOVoting.VoteType"
-      },
-      {
-        "name": "weight",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -484,6 +499,11 @@
   {
     "type": "error",
     "name": "AlreadyExecuted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EmptyDescription",
     "inputs": []
   },
   {
