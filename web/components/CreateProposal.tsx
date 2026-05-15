@@ -13,6 +13,7 @@ export function CreateProposal() {
     const { bumpRefresh } = useWallet();
     const [recipient, setRecipient] = useState("");
     const [amount, setAmount] = useState("");
+    const [description, setDescription] = useState("");
     const [deadline, setDeadline] = useState(defaultDeadline());
     const [status, setStatus] = useState<TxStatus>("idle");
     const [error, setError] = useState<string | null>(null);
@@ -43,6 +44,13 @@ export function CreateProposal() {
             return;
         }
 
+        const trimmedDescription = description.trim();
+        if (trimmedDescription.length === 0) {
+            setError("La descripción es obligatoria");
+            setStatus("error");
+            return;
+        }
+
         const deadlineSec = Math.floor(new Date(deadline).getTime() / 1000);
         if (!Number.isFinite(deadlineSec) || deadlineSec <= Math.floor(Date.now() / 1000)) {
             setError("La deadline debe estar en el futuro");
@@ -52,7 +60,7 @@ export function CreateProposal() {
 
         try {
             setStatus("signing");
-            const tx = await dao.createProposal(recipient, amountWei, deadlineSec);
+            const tx = await dao.createProposal(recipient, amountWei, deadlineSec, trimmedDescription);
             setStatus("pending");
             const receipt = await tx.wait();
             for (const log of receipt?.logs ?? []) {
@@ -86,6 +94,18 @@ export function CreateProposal() {
                 <h2 className="text-sm font-semibold">Crear propuesta</h2>
                 <p className="text-xs text-zinc-500">Requiere ≥ 10% del balance del DAO.</p>
             </header>
+
+            <label className="flex flex-col gap-1 text-xs">
+                Descripción
+                <textarea
+                    rows={3}
+                    placeholder="Ej: Construir una escuela en el barrio"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    disabled={busy}
+                    className="rounded-lg border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm disabled:opacity-50 resize-y"
+                />
+            </label>
 
             <label className="flex flex-col gap-1 text-xs">
                 Beneficiario
@@ -151,6 +171,7 @@ function prettifyError(err: unknown): string {
     if (err instanceof Error) {
         if (err.message.includes("user rejected")) return "Firma cancelada en la wallet";
         if (err.message.includes("InsufficientQuorumToPropose")) return "No tienes el 10% requerido para crear una propuesta";
+        if (err.message.includes("EmptyDescription")) return "La descripción es obligatoria";
         return err.message.length > 200 ? `${err.message.slice(0, 200)}…` : err.message;
     }
     return "Error desconocido";
