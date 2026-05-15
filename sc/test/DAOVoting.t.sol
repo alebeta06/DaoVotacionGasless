@@ -25,6 +25,8 @@ contract DAOVotingTest is Test {
 
     address internal recipient = makeAddr("recipient");
 
+    string internal constant DESC = "Construir una escuela";
+
     bytes32 internal constant FW_TYPEHASH =
         keccak256("ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)");
 
@@ -110,7 +112,7 @@ contract DAOVotingTest is Test {
         assertEq(dao.totalDeposits(), 1 ether);
     }
 
-    // --- createProposal (quorum 10%) ---
+    // --- createProposal (quorum 10% por balance) ---
 
     function _seedDeposits() internal {
         vm.prank(alice);
@@ -123,13 +125,14 @@ contract DAOVotingTest is Test {
         // alice has 10/15 = 66.6% >= 10% -> ok
         _seedDeposits();
         vm.prank(alice);
-        uint256 id = dao.createProposal(recipient, 1 ether, block.timestamp + 1 days);
+        uint256 id = dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, DESC);
         assertEq(id, 1);
         DAOVoting.Proposal memory p = dao.getProposal(1);
         assertEq(p.proposer, alice);
         assertEq(p.recipient, recipient);
         assertEq(p.amount, 1 ether);
         assertEq(p.deadline, block.timestamp + 1 days);
+        assertEq(p.description, DESC);
         assertFalse(p.executed);
     }
 
@@ -143,7 +146,7 @@ contract DAOVotingTest is Test {
 
         vm.prank(dave);
         vm.expectRevert(DAOVoting.InsufficientQuorumToPropose.selector);
-        dao.createProposal(recipient, 1 ether, block.timestamp + 1 days);
+        dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, DESC);
     }
 
     function test_CreateProposal_ExactlyAtTenPercent() public {
@@ -153,7 +156,7 @@ contract DAOVotingTest is Test {
         vm.prank(bob);
         dao.fundDAO{ value: 9 ether }();
         vm.prank(alice);
-        uint256 id = dao.createProposal(recipient, 1 ether, block.timestamp + 1 days);
+        uint256 id = dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, DESC);
         assertEq(id, 1);
     }
 
@@ -161,29 +164,36 @@ contract DAOVotingTest is Test {
         _seedDeposits();
         vm.prank(alice);
         vm.expectRevert(DAOVoting.ZeroRecipient.selector);
-        dao.createProposal(address(0), 1 ether, block.timestamp + 1 days);
+        dao.createProposal(address(0), 1 ether, block.timestamp + 1 days, DESC);
     }
 
     function testRevert_CreateProposal_ZeroAmount() public {
         _seedDeposits();
         vm.prank(alice);
         vm.expectRevert(DAOVoting.ZeroAmount.selector);
-        dao.createProposal(recipient, 0, block.timestamp + 1 days);
+        dao.createProposal(recipient, 0, block.timestamp + 1 days, DESC);
+    }
+
+    function testRevert_CreateProposal_EmptyDescription() public {
+        _seedDeposits();
+        vm.prank(alice);
+        vm.expectRevert(DAOVoting.EmptyDescription.selector);
+        dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, "");
     }
 
     function testRevert_CreateProposal_PastDeadline() public {
         _seedDeposits();
         vm.prank(alice);
         vm.expectRevert(DAOVoting.InvalidDeadline.selector);
-        dao.createProposal(recipient, 1 ether, block.timestamp);
+        dao.createProposal(recipient, 1 ether, block.timestamp, DESC);
     }
 
-    // --- vote (direct, sin forwarder) ---
+    // --- vote (1 persona = 1 voto, directo sin forwarder) ---
 
     function _seedAndCreate() internal returns (uint256 id) {
         _seedDeposits();
         vm.prank(alice);
-        id = dao.createProposal(recipient, 3 ether, block.timestamp + 1 days);
+        id = dao.createProposal(recipient, 3 ether, block.timestamp + 1 days, DESC);
     }
 
     function test_Vote_For() public {
@@ -191,7 +201,7 @@ contract DAOVotingTest is Test {
         vm.prank(alice);
         dao.vote(id, DAOVoting.VoteType.FOR);
         DAOVoting.Proposal memory p = dao.getProposal(id);
-        assertEq(p.forVotes, 10 ether);
+        assertEq(p.forVotes, 1);
         assertEq(p.againstVotes, 0);
         assertEq(p.abstainVotes, 0);
     }
@@ -202,7 +212,7 @@ contract DAOVotingTest is Test {
         dao.vote(id, DAOVoting.VoteType.AGAINST);
         DAOVoting.Proposal memory p = dao.getProposal(id);
         assertEq(p.forVotes, 0);
-        assertEq(p.againstVotes, 5 ether);
+        assertEq(p.againstVotes, 1);
     }
 
     function test_Vote_Abstain() public {
@@ -210,18 +220,19 @@ contract DAOVotingTest is Test {
         vm.prank(alice);
         dao.vote(id, DAOVoting.VoteType.ABSTAIN);
         DAOVoting.Proposal memory p = dao.getProposal(id);
-        assertEq(p.abstainVotes, 10 ether);
+        assertEq(p.abstainVotes, 1);
     }
 
-    function test_Vote_WeightedAcrossUsers() public {
+    function test_Vote_CountsPerUser() public {
+        // cada votante suma exactamente 1, sin importar cuánto depositó
         uint256 id = _seedAndCreate();
-        vm.prank(alice);
+        vm.prank(alice); // depositó 10
         dao.vote(id, DAOVoting.VoteType.FOR);
-        vm.prank(bob);
+        vm.prank(bob); // depositó 5
         dao.vote(id, DAOVoting.VoteType.AGAINST);
         DAOVoting.Proposal memory p = dao.getProposal(id);
-        assertEq(p.forVotes, 10 ether);
-        assertEq(p.againstVotes, 5 ether);
+        assertEq(p.forVotes, 1);
+        assertEq(p.againstVotes, 1);
     }
 
     function test_Vote_Change() public {
@@ -232,7 +243,7 @@ contract DAOVotingTest is Test {
         dao.vote(id, DAOVoting.VoteType.AGAINST);
         DAOVoting.Proposal memory p = dao.getProposal(id);
         assertEq(p.forVotes, 0);
-        assertEq(p.againstVotes, 10 ether);
+        assertEq(p.againstVotes, 1);
     }
 
     function test_Vote_Idempotent_SameVoteNoDoubleCount() public {
@@ -242,21 +253,20 @@ contract DAOVotingTest is Test {
         vm.prank(alice);
         dao.vote(id, DAOVoting.VoteType.FOR);
         DAOVoting.Proposal memory p = dao.getProposal(id);
-        assertEq(p.forVotes, 10 ether);
+        assertEq(p.forVotes, 1);
     }
 
-    function test_Vote_WeightSnapshot_DoesNotGrowWithLaterDeposit() public {
+    function test_Vote_OneVotePerUser_RegardlessOfDeposit() public {
         uint256 id = _seedAndCreate();
         vm.prank(alice);
-        dao.vote(id, DAOVoting.VoteType.FOR); // weight locked at 10 ether
+        dao.vote(id, DAOVoting.VoteType.FOR); // cuenta 1
         vm.prank(alice);
-        dao.fundDAO{ value: 50 ether }(); // balance now 60 ether
-        // change vote -> AGAINST should move the original 10 ether, not 60
+        dao.fundDAO{ value: 50 ether }(); // depositar más no cambia el peso
         vm.prank(alice);
-        dao.vote(id, DAOVoting.VoteType.AGAINST);
+        dao.vote(id, DAOVoting.VoteType.AGAINST); // cambia el voto, sigue siendo 1
         DAOVoting.Proposal memory p = dao.getProposal(id);
         assertEq(p.forVotes, 0);
-        assertEq(p.againstVotes, 10 ether);
+        assertEq(p.againstVotes, 1);
     }
 
     function testRevert_Vote_AfterDeadline() public {
@@ -288,7 +298,7 @@ contract DAOVotingTest is Test {
         _gaslessVote(alicePk, alice, id, DAOVoting.VoteType.FOR);
 
         DAOVoting.Proposal memory p = dao.getProposal(id);
-        assertEq(p.forVotes, 10 ether, "alice's 10 ETH should be credited, not the forwarder's");
+        assertEq(p.forVotes, 1, "alice's vote should be credited, not the forwarder's");
         assertTrue(dao.hasVoted(id, alice));
         assertFalse(dao.hasVoted(id, address(forwarder)));
     }
@@ -297,10 +307,7 @@ contract DAOVotingTest is Test {
 
     function _approveAndPass(uint256 id) internal {
         vm.prank(alice);
-        dao.vote(id, DAOVoting.VoteType.FOR); // 10 ETH
-        vm.prank(bob);
-        dao.vote(id, DAOVoting.VoteType.AGAINST); // 5 ETH
-        // forVotes 10 > againstVotes 5
+        dao.vote(id, DAOVoting.VoteType.FOR); // forVotes 1 > againstVotes 0
         DAOVoting.Proposal memory p = dao.getProposal(id);
         vm.warp(p.deadline + dao.SECURITY_DELAY() + 1);
     }
@@ -342,17 +349,14 @@ contract DAOVotingTest is Test {
         dao.vote(id, DAOVoting.VoteType.FOR);
         DAOVoting.Proposal memory p = dao.getProposal(id);
         vm.warp(p.deadline + dao.SECURITY_DELAY() + 1);
-        // forVotes=5 vs againstVotes=10 -> not approved
+        // forVotes 1 vs againstVotes 1 -> no aprobada (estricto)
         vm.expectRevert(DAOVoting.NotApproved.selector);
         dao.executeProposal(id);
     }
 
     function testRevert_Execute_TieIsNotApproved() public {
-        // empate también NO aprueba: forVotes > againstVotes (strict)
+        // empate 1-1 también NO aprueba: forVotes > againstVotes (estricto)
         uint256 id = _seedAndCreate();
-        // alice 10 FOR, bob 10 AGAINST (después de que bob deposite más)
-        vm.prank(bob);
-        dao.fundDAO{ value: 5 ether }(); // bob ahora tiene 10
         vm.prank(alice);
         dao.vote(id, DAOVoting.VoteType.FOR);
         vm.prank(bob);
@@ -380,7 +384,7 @@ contract DAOVotingTest is Test {
         RevertingRecipient bad = new RevertingRecipient();
         _seedDeposits();
         vm.prank(alice);
-        uint256 id = dao.createProposal(address(bad), 1 ether, block.timestamp + 1 days);
+        uint256 id = dao.createProposal(address(bad), 1 ether, block.timestamp + 1 days, DESC);
         vm.prank(alice);
         dao.vote(id, DAOVoting.VoteType.FOR);
         DAOVoting.Proposal memory p = dao.getProposal(id);
@@ -400,7 +404,7 @@ contract DAOVotingTest is Test {
         dao.fundDAO{ value: 5 ether }();
         // 3. Alice crea propuesta (10/15 = 66% >= 10%)
         vm.prank(alice);
-        uint256 id = dao.createProposal(recipient, 4 ether, block.timestamp + 1 days);
+        uint256 id = dao.createProposal(recipient, 4 ether, block.timestamp + 1 days, DESC);
         // 5. Alice vota A FAVOR (gasless)
         _gaslessVote(alicePk, alice, id, DAOVoting.VoteType.FOR);
         // 6. Bob vota EN CONTRA (gasless)
@@ -419,8 +423,8 @@ contract DAOVotingTest is Test {
         assertEq(recipient.balance - before_, 4 ether);
 
         p = dao.getProposal(id);
-        assertEq(p.forVotes, 30 ether); // alice 10 + charlie 20
-        assertEq(p.againstVotes, 5 ether); // bob
+        assertEq(p.forVotes, 2); // alice + charlie
+        assertEq(p.againstVotes, 1); // bob
         assertTrue(p.executed);
     }
 }

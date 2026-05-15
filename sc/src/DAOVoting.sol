@@ -16,6 +16,7 @@ contract DAOVoting is ERC2771Context {
         address recipient;
         uint256 amount;
         uint256 deadline;
+        string description;
         uint256 forVotes;
         uint256 againstVotes;
         uint256 abstainVotes;
@@ -28,13 +29,13 @@ contract DAOVoting is ERC2771Context {
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => mapping(address => VoteType)) public votedAs;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
-    mapping(uint256 => mapping(address => uint256)) private _voteWeight;
 
     uint256 public nextProposalId = 1;
     uint256 public totalDeposits;
 
     error ZeroAmount();
     error ZeroRecipient();
+    error EmptyDescription();
     error InvalidDeadline();
     error InsufficientQuorumToPropose();
     error ProposalNotFound();
@@ -47,9 +48,14 @@ contract DAOVoting is ERC2771Context {
 
     event Funded(address indexed user, uint256 amount, uint256 newBalance);
     event ProposalCreated(
-        uint256 indexed id, address indexed proposer, address recipient, uint256 amount, uint256 deadline
+        uint256 indexed id,
+        address indexed proposer,
+        address recipient,
+        uint256 amount,
+        uint256 deadline,
+        string description
     );
-    event Voted(uint256 indexed id, address indexed voter, VoteType voteType, uint256 weight);
+    event Voted(uint256 indexed id, address indexed voter, VoteType voteType);
     event ProposalExecuted(uint256 indexed id, address indexed recipient, uint256 amount);
 
     constructor(address trustedForwarder) ERC2771Context(trustedForwarder) { }
@@ -62,9 +68,13 @@ contract DAOVoting is ERC2771Context {
         emit Funded(user, msg.value, balanceOf[user]);
     }
 
-    function createProposal(address recipient, uint256 amount, uint256 deadline) external returns (uint256 id) {
+    function createProposal(address recipient, uint256 amount, uint256 deadline, string calldata description)
+        external
+        returns (uint256 id)
+    {
         if (recipient == address(0)) revert ZeroRecipient();
         if (amount == 0) revert ZeroAmount();
+        if (bytes(description).length == 0) revert EmptyDescription();
         if (deadline <= block.timestamp) revert InvalidDeadline();
 
         address proposer = _msgSender();
@@ -77,13 +87,14 @@ contract DAOVoting is ERC2771Context {
             recipient: recipient,
             amount: amount,
             deadline: deadline,
+            description: description,
             forVotes: 0,
             againstVotes: 0,
             abstainVotes: 0,
             executed: false
         });
 
-        emit ProposalCreated(id, proposer, recipient, amount, deadline);
+        emit ProposalCreated(id, proposer, recipient, amount, deadline, description);
     }
 
     function vote(uint256 proposalId, VoteType voteType) external {
@@ -92,27 +103,22 @@ contract DAOVoting is ERC2771Context {
         if (block.timestamp >= p.deadline) revert VotingClosed();
 
         address voter = _msgSender();
-        uint256 currentBalance = balanceOf[voter];
-        if (currentBalance == 0) revert NoVotingPower();
+        if (balanceOf[voter] == 0) revert NoVotingPower();
 
-        uint256 weight;
         if (hasVoted[proposalId][voter]) {
             VoteType prev = votedAs[proposalId][voter];
-            weight = _voteWeight[proposalId][voter];
             if (prev == voteType) {
-                emit Voted(proposalId, voter, voteType, weight);
+                emit Voted(proposalId, voter, voteType);
                 return;
             }
-            _subtractVote(p, prev, weight);
+            _subtractVote(p, prev);
         } else {
-            weight = currentBalance;
-            _voteWeight[proposalId][voter] = weight;
             hasVoted[proposalId][voter] = true;
         }
 
         votedAs[proposalId][voter] = voteType;
-        _addVote(p, voteType, weight);
-        emit Voted(proposalId, voter, voteType, weight);
+        _addVote(p, voteType);
+        emit Voted(proposalId, voter, voteType);
     }
 
     function executeProposal(uint256 proposalId) external {
@@ -137,16 +143,16 @@ contract DAOVoting is ERC2771Context {
         return balanceOf[user];
     }
 
-    function _addVote(Proposal storage p, VoteType vt, uint256 weight) private {
-        if (vt == VoteType.FOR) p.forVotes += weight;
-        else if (vt == VoteType.AGAINST) p.againstVotes += weight;
-        else p.abstainVotes += weight;
+    function _addVote(Proposal storage p, VoteType vt) private {
+        if (vt == VoteType.FOR) p.forVotes += 1;
+        else if (vt == VoteType.AGAINST) p.againstVotes += 1;
+        else p.abstainVotes += 1;
     }
 
-    function _subtractVote(Proposal storage p, VoteType vt, uint256 weight) private {
-        if (vt == VoteType.FOR) p.forVotes -= weight;
-        else if (vt == VoteType.AGAINST) p.againstVotes -= weight;
-        else p.abstainVotes -= weight;
+    function _subtractVote(Proposal storage p, VoteType vt) private {
+        if (vt == VoteType.FOR) p.forVotes -= 1;
+        else if (vt == VoteType.AGAINST) p.againstVotes -= 1;
+        else p.abstainVotes -= 1;
     }
 
     receive() external payable {
