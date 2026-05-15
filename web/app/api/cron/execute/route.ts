@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Contract, JsonRpcProvider, Wallet } from "ethers";
+import { Contract, JsonRpcProvider, NonceManager, Wallet } from "ethers";
 
 import DAOVotingAbi from "@/lib/abis/DAOVoting.json";
 
@@ -21,7 +21,7 @@ export async function GET() {
     }
 
     const provider = new JsonRpcProvider(rpcUrl);
-    const executor = new Wallet(pk, provider);
+    const executor = new NonceManager(new Wallet(pk, provider));
     const dao = new Contract(daoAddress, DAOVotingAbi, executor);
 
     try {
@@ -64,6 +64,7 @@ export async function GET() {
                 await tx.wait();
                 results.push({ id: id.toString(), status: "executed", txHash: tx.hash });
             } catch (err) {
+                executor.reset();
                 results.push({
                     id: id.toString(),
                     status: "error",
