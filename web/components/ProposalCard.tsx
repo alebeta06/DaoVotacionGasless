@@ -10,6 +10,7 @@ export type Proposal = {
     recipient: string;
     amount: bigint;
     deadline: bigint;
+    description: string;
     forVotes: bigint;
     againstVotes: bigint;
     abstainVotes: bigint;
@@ -29,6 +30,8 @@ export function ProposalCard({ proposal, now }: { proposal: Proposal; now: numbe
                 <StatusBadge executed={proposal.executed} closed={closed} />
             </header>
 
+            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{proposal.description}</p>
+
             <dl className="grid grid-cols-2 gap-2 text-xs">
                 <Field label="Beneficiario" mono>
                     {short(proposal.recipient)}
@@ -45,9 +48,9 @@ export function ProposalCard({ proposal, now }: { proposal: Proposal; now: numbe
             </dl>
 
             <div className="grid grid-cols-3 gap-2 text-xs">
-                <VoteTally label="A favor" weight={proposal.forVotes} pct={pct(proposal.forVotes)} tone="emerald" />
-                <VoteTally label="En contra" weight={proposal.againstVotes} pct={pct(proposal.againstVotes)} tone="red" />
-                <VoteTally label="Abstención" weight={proposal.abstainVotes} pct={pct(proposal.abstainVotes)} tone="zinc" />
+                <VoteTally label="A favor" count={proposal.forVotes} pct={pct(proposal.forVotes)} tone="emerald" />
+                <VoteTally label="En contra" count={proposal.againstVotes} pct={pct(proposal.againstVotes)} tone="red" />
+                <VoteTally label="Abstención" count={proposal.abstainVotes} pct={pct(proposal.abstainVotes)} tone="zinc" />
             </div>
 
             {!closed && !proposal.executed && <VoteButtons proposalId={proposal.id} />}
@@ -85,12 +88,12 @@ function Field({ label, mono, children }: { label: string; mono?: boolean; child
 
 function VoteTally({
     label,
-    weight,
+    count,
     pct,
     tone,
 }: {
     label: string;
-    weight: bigint;
+    count: bigint;
     pct: number;
     tone: "emerald" | "red" | "zinc";
 }) {
@@ -99,10 +102,13 @@ function VoteTally({
         red: "text-red-600 dark:text-red-400",
         zinc: "text-zinc-600 dark:text-zinc-400",
     };
+    const n = Number(count);
     return (
         <div className="flex flex-col">
             <span className="text-zinc-500">{label}</span>
-            <span className={`font-mono ${colors[tone]}`}>{formatEther(weight)} ETH</span>
+            <span className={`font-mono ${colors[tone]}`}>
+                {n} {n === 1 ? "voto" : "votos"}
+            </span>
             <span className="font-mono text-zinc-400">{pct.toFixed(1)}%</span>
         </div>
     );

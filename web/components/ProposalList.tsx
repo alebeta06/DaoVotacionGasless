@@ -32,6 +32,7 @@ export function ProposalList() {
                         recipient: raw.recipient as string,
                         amount: raw.amount as bigint,
                         deadline: raw.deadline as bigint,
+                        description: raw.description as string,
                         forVotes: raw.forVotes as bigint,
                         againstVotes: raw.againstVotes as bigint,
                         abstainVotes: raw.abstainVotes as bigint,
