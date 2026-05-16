@@ -44,6 +44,7 @@ contract DAOVoting is ERC2771Context {
     error NoVotingPower();
     error NotApproved();
     error AlreadyExecuted();
+    error InsufficientTreasury();
     error TransferFailed();
 
     event Funded(address indexed user, uint256 amount, uint256 newBalance);
@@ -78,7 +79,7 @@ contract DAOVoting is ERC2771Context {
         if (deadline <= block.timestamp) revert InvalidDeadline();
 
         address proposer = _msgSender();
-        if (balanceOf[proposer] * 10 < totalDeposits) revert InsufficientQuorumToPropose();
+        if (balanceOf[proposer] * 10 < address(this).balance) revert InsufficientQuorumToPropose();
 
         id = nextProposalId++;
         proposals[id] = Proposal({
@@ -127,6 +128,7 @@ contract DAOVoting is ERC2771Context {
         if (p.executed) revert AlreadyExecuted();
         if (block.timestamp < p.deadline + SECURITY_DELAY) revert VotingStillOpen();
         if (p.forVotes <= p.againstVotes) revert NotApproved();
+        if (address(this).balance < p.amount) revert InsufficientTreasury();
 
         p.executed = true;
         (bool ok,) = p.recipient.call{ value: p.amount }("");
@@ -141,6 +143,10 @@ contract DAOVoting is ERC2771Context {
 
     function getUserBalance(address user) external view returns (uint256) {
         return balanceOf[user];
+    }
+
+    function treasury() external view returns (uint256) {
+        return address(this).balance;
     }
 
     function _addVote(Proposal storage p, VoteType vt) private {
