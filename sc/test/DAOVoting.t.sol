@@ -393,6 +393,73 @@ contract DAOVotingTest is Test {
         dao.executeProposal(id);
     }
 
+    // --- modelo contable A+ (tesoro real) ---
+
+    function test_Treasury_ReflectsRealBalance() public {
+        assertEq(dao.treasury(), 0);
+        _seedDeposits(); // 10 + 5
+        assertEq(dao.treasury(), 15 ether);
+        assertEq(dao.treasury(), address(dao).balance);
+
+        vm.prank(alice);
+        uint256 id = dao.createProposal(recipient, 4 ether, block.timestamp + 1 days, DESC);
+        _approveAndPass(id);
+        dao.executeProposal(id);
+
+        // el tesoro real baja; balanceOf/totalDeposits NO (siguen siendo peso de gobernanza)
+        assertEq(dao.treasury(), 11 ether);
+        assertEq(dao.balanceOf(alice), 10 ether);
+        assertEq(dao.totalDeposits(), 15 ether);
+    }
+
+    function test_CreateProposal_QuorumUsesTreasuryNotDeposits() public {
+        // alice aporta 100, bob 5. totalDeposits = treasury = 105.
+        vm.deal(alice, 200 ether);
+        vm.prank(alice);
+        dao.fundDAO{ value: 100 ether }();
+        vm.prank(bob);
+        dao.fundDAO{ value: 5 ether }();
+
+        // bob (5) está por debajo del 10% mientras el tesoro sea 105
+        vm.prank(bob);
+        vm.expectRevert(DAOVoting.InsufficientQuorumToPropose.selector);
+        dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, DESC);
+
+        // alice drena casi todo el tesoro vía una propuesta ejecutada
+        vm.prank(alice);
+        uint256 id = dao.createProposal(recipient, 100 ether, block.timestamp + 1 days, DESC);
+        _approveAndPass(id);
+        dao.executeProposal(id);
+        assertEq(dao.treasury(), 5 ether); // 105 - 100
+
+        // ahora bob (5) SÍ supera el 10% del tesoro real (5), aunque seguiría
+        // fallando contra totalDeposits (105). El gate usa el tesoro real.
+        vm.prank(bob);
+        uint256 id2 = dao.createProposal(recipient, 1 ether, block.timestamp + 1 days, DESC);
+        assertEq(id2, 2);
+    }
+
+    function testRevert_Execute_InsufficientTreasury() public {
+        // alice aporta 10; dos propuestas de 8 ETH cada una (suman > tesoro)
+        vm.prank(alice);
+        dao.fundDAO{ value: 10 ether }();
+        vm.prank(alice);
+        uint256 p1 = dao.createProposal(recipient, 8 ether, block.timestamp + 1 days, DESC);
+        vm.prank(alice);
+        uint256 p2 = dao.createProposal(recipient, 8 ether, block.timestamp + 1 days, DESC);
+
+        vm.prank(alice);
+        dao.vote(p1, DAOVoting.VoteType.FOR);
+        vm.prank(alice);
+        dao.vote(p2, DAOVoting.VoteType.FOR);
+        DAOVoting.Proposal memory p = dao.getProposal(p2);
+        vm.warp(p.deadline + dao.SECURITY_DELAY() + 1);
+
+        dao.executeProposal(p1); // tesoro 10 -> 2
+        vm.expectRevert(DAOVoting.InsufficientTreasury.selector);
+        dao.executeProposal(p2); // 2 < 8
+    }
+
     // --- escenario completo del brief ---
 
     function test_FullScenario_FromBrief() public {
@@ -426,5 +493,9 @@ contract DAOVotingTest is Test {
         assertEq(p.forVotes, 2); // alice + charlie
         assertEq(p.againstVotes, 1); // bob
         assertTrue(p.executed);
+
+        // tesoro real: 35 aportados - 4 pagados = 31; el aporte histórico NO cambia
+        assertEq(dao.treasury(), 31 ether);
+        assertEq(dao.totalDeposits(), 35 ether);
     }
 }
