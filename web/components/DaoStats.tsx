@@ -9,7 +9,7 @@ import { useWallet } from "@/lib/WalletContext";
 export function DaoStats() {
     const dao = useReadDao();
     const { address, refreshVersion } = useWallet();
-    const [total, setTotal] = useState<bigint | null>(null);
+    const [treasury, setTreasury] = useState<bigint | null>(null);
     const [mine, setMine] = useState<bigint | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -19,9 +19,9 @@ export function DaoStats() {
         setError(null);
         (async () => {
             try {
-                const [t, m] = await Promise.all([dao.totalDeposits(), dao.balanceOf(address)]);
+                const [t, m] = await Promise.all([dao.treasury(), dao.balanceOf(address)]);
                 if (!cancelled) {
-                    setTotal(t as bigint);
+                    setTreasury(t as bigint);
                     setMine(m as bigint);
                 }
             } catch (err) {
@@ -37,21 +37,22 @@ export function DaoStats() {
         return <p className="text-sm text-red-600 dark:text-red-400">DAO error: {error}</p>;
     }
 
-    if (total === null || mine === null) {
+    if (treasury === null || mine === null) {
         return <div className="text-sm text-zinc-500">Cargando stats del DAO…</div>;
     }
 
-    const percent = total === 0n ? 0 : Number((mine * 10_000n) / total) / 100;
-    const canPropose = percent >= 10;
+    const percent = treasury === 0n ? 0 : Number((mine * 10_000n) / treasury) / 100;
+    // mismo criterio exacto que el contrato: balanceOf * 10 >= address(this).balance
+    const canPropose = treasury > 0n && mine * 10n >= treasury;
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl border border-black/10 dark:border-white/15 p-4 text-sm">
-            <Stat label="Total DAO" value={`${formatEther(total)} ETH`} />
-            <Stat label="Tu balance" value={`${formatEther(mine)} ETH`} />
+            <Stat label="Tesoro DAO" value={`${formatEther(treasury)} ETH`} />
+            <Stat label="Tu aporte" value={`${formatEther(mine)} ETH`} />
             <Stat
-                label="Tu % del DAO"
+                label="Tu % del tesoro"
                 value={`${percent.toFixed(2)}%`}
-                hint={canPropose ? "✓ Puedes proponer" : "Necesitas ≥ 10% para proponer"}
+                hint={canPropose ? "✓ Puedes proponer" : "Necesitas ≥ 10% del tesoro para proponer"}
                 tone={canPropose ? "good" : "muted"}
             />
         </div>
