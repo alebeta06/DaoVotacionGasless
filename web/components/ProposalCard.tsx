@@ -47,7 +47,7 @@ export function ProposalCard({ proposal, now }: { proposal: Proposal; now: numbe
                 </Field>
             </dl>
 
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-3 gap-2 text-xs text-center">
                 <VoteTally label="A favor" count={proposal.forVotes} pct={pct(proposal.forVotes)} tone="emerald" />
                 <VoteTally label="En contra" count={proposal.againstVotes} pct={pct(proposal.againstVotes)} tone="red" />
                 <VoteTally label="Abstención" count={proposal.abstainVotes} pct={pct(proposal.abstainVotes)} tone="zinc" />
@@ -104,7 +104,7 @@ function VoteTally({
     };
     const n = Number(count);
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-center">
             <span className="text-zinc-500">{label}</span>
             <span className={`font-mono ${colors[tone]}`}>
                 {n} {n === 1 ? "voto" : "votos"}

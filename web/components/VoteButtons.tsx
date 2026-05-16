@@ -61,8 +61,8 @@ export function VoteButtons({ proposalId }: { proposalId: bigint }) {
     const busy = status === "signing" || status === "relaying";
 
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-col items-center gap-2">
+            <div className="flex gap-2 flex-wrap justify-center">
                 {OPTIONS.map(({ type, label, className }) => {
                     const isActive = active === type;
                     return (
