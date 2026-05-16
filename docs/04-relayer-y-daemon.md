@@ -195,4 +195,49 @@ Esto cumple el requisito del brief: *"Logging de ejecuciones"*.
 | `vote()` | **El relayer** | Meta-tx EIP-2771 vía `/api/relay` |
 | `executeProposal()` | **El daemon** | Tx normal del daemon, no requiere firma |
 
+---
+
+## Fase 9 — E2E automatizado del escenario del brief
+
+Los tests de Foundry (`forge test`) ya validan los contratos y la matemática de la
+meta-tx **en aislamiento**: firman el `ForwardRequest` dentro del propio test y llaman
+a `forwarder.execute()` directo. Eso prueba el contrato, pero **no prueba el stack**:
+
+- que el endpoint HTTP `/api/relay` arme bien el `ForwardRequest`, valide la firma con
+  `forwarder.verify()` y pague el gas con la *hot key* del relayer;
+- que el daemon `/api/cron/execute` escanee propuestas y dispare `executeProposal()`.
+
+Por eso la Fase 9 añade un **orquestador E2E** (`web/scripts/e2e.mjs`, vía `npm run e2e`)
+que reproduce el escenario del brief contra el sistema **real corriendo**:
+
+```
+anvil (efímero)
+  └─▶ forge script Deploy           (despliega Forwarder + DAO)
+        └─▶ escribe web/.env.local  (addresses + RELAYER_PRIVATE_KEY)
+              └─▶ next dev          (lee ese .env.local al arrancar)
+                    └─▶ escenario:
+                        Alice fundDAO 10 ETH        (tx normal, paga gas)
+                        Bob   fundDAO  5 ETH        (tx normal, paga gas)
+                        Alice createProposal(4 ETH) (tx normal, paga gas)
+                        Alice  vota FOR     ──▶ POST /api/relay   (gasless)
+                        Bob    vota AGAINST ──▶ POST /api/relay   (gasless)
+                        Charlie fundDAO 20 ETH + vota FOR ──▶ /api/relay
+                        evm_increase_time  (pasa deadline + SECURITY_DELAY)
+                        GET /api/cron/execute  (el daemon ejecuta)
+                        assert: recipient recibió 4 ETH, forVotes=2, againstVotes=1
+```
+
+Diferencia clave con la migración a *one-person-one-vote*: el `assert` final espera
+**`forVotes == 2`** (Alice + Charlie, un voto cada uno) y **no** una suma ponderada por
+el ETH depositado. Si alguien reintrodujera el modelo ponderado, este E2E fallaría
+(Charlie depositó 20 ETH y rompería el conteo esperado).
+
+El script firma los votos con la clave de cada votante **localmente** (igual que haría
+la wallet del usuario en el navegador) y solo manda al servidor `{ request, signature }`
+— nunca la clave privada del votante sale del cliente. La única *hot key* del lado
+servidor es la del relayer/daemon, exactamente como en producción.
+
+Al terminar (éxito o fallo) mata `anvil` y `next dev`, así que no deja procesos vivos
+ni toca tu `.env.local` real más allá de lo necesario (hace backup y lo restaura).
+
 > El brief solo exige que **votar** sea gasless (la acción más frecuente). Depositar y crear propuesta son operaciones puntuales y razonables que el usuario pague.
