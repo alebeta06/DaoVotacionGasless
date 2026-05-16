@@ -264,12 +264,22 @@ para cada proposalId en [1..nextId-1]:
 
 **Objetivo:** validar el escenario del brief y entregar.
 
-📖 **Escenario del brief:**
+Hay **dos formas** de validar el escenario, complementarias:
+
+- **A. E2E automatizado** — `cd web && npm run e2e`. Levanta Anvil + deploy + `next dev`
+  efímeros, simula el escenario completo golpeando `/api/relay` y `/api/cron/execute`
+  reales, hace los `assert` y derriba todo. Teoría: `docs/04-relayer-y-daemon.md` →
+  "Fase 9 — E2E automatizado".
+- **B. Manual en el frontend** — con el stack persistente arriba y MetaMask. Es la que
+  el corrector reproduce a mano; la detallamos abajo campo por campo.
+
+📖 **Escenario del brief (resumen):**
 
 1. Alice deposita 10 ETH.
 2. Bob deposita 5 ETH.
 3. Alice crea propuesta (>10%: tiene 10/15 = 66%).
-4. Bob intenta crear propuesta (5/15 = 33% — *espera, eso sí supera 10%*; el caso borde real es alguien con <1.5 ETH).
+4. Bob *podría* crear propuesta (5/15 = 33% ≥ 10%); el caso borde real que **debe
+   fallar** es alguien con <10% (ej. 1 ETH sobre 35 → 2.8%).
 5. Alice vota A FAVOR (gasless).
 6. Bob vota EN CONTRA (gasless).
 7. Charlie deposita 20 ETH.
@@ -277,7 +287,100 @@ para cada proposalId en [1..nextId-1]:
 9. Esperar deadline + delay.
 10. Daemon ejecuta. El recipient recibe los ETH.
 
-**Edge cases a verificar:**
+---
+
+### Guía manual paso a paso en el frontend (`http://localhost:3000`)
+
+**Pre-requisitos** (ver mensaje de arranque del stack):
+
+- Anvil corriendo, contratos desplegados, `next dev` en `:3000`, `.env.local` apuntando
+  a las addresses desplegadas.
+- En MetaMask: red `Anvil Local` (RPC `http://127.0.0.1:8545`, chainId `31337`) e
+  importadas las cuentas de Alice, Bob y Charlie.
+- El **relayer** es la cuenta #9 de Anvil — está en `.env.local`, **no se importa a
+  MetaMask**, paga el gas de los votos por detrás.
+
+Cuentas (claves privadas estándar de Anvil):
+
+| Rol | Address | Private key |
+|-----|---------|-------------|
+| Alice | `0x7099...79C8` | `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d` |
+| Bob | `0x3C44...93BC` | `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a` |
+| Charlie | `0x90F7...b906` | `0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6` |
+| Beneficiario (recipient) | `0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65` | — (no se importa; solo recibe ETH) |
+
+**Paso 1 — Alice deposita 10 ETH**
+- Conecta MetaMask con la cuenta **Alice** y pulsa *Conectar*.
+- Panel **"Depositar ETH al DAO"** → campo cantidad: `10` → botón **Depositar**.
+- MetaMask pide **enviar transacción** (paga gas — está moviendo *su* ETH). Confirma.
+- Verifica en **DaoStats**: balance total `10 ETH`, tu balance `10 ETH`, tu % `100%`.
+
+**Paso 2 — Bob deposita 5 ETH**
+- Cambia la cuenta activa de MetaMask a **Bob**, reconecta.
+- Panel "Depositar ETH al DAO" → `5` → **Depositar** → confirmar tx.
+- DaoStats ahora: total `15 ETH`, balance de Bob `5 ETH`, su % ≈ `33%`.
+
+**Paso 3 — Alice crea la propuesta** (tiene 10/15 = 66% ≥ 10%, puede)
+- Vuelve a la cuenta **Alice**.
+- Panel **"Crear propuesta"**, rellena los campos así:
+
+| Campo | Qué poner | Por qué |
+|-------|-----------|---------|
+| **Descripción** | `Financiar la construcción de una escuela` | Obligatorio (revert `EmptyDescription` si vacío). Texto libre, no puede ser solo espacios. |
+| **Beneficiario** | `0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65` | Address que recibirá los ETH al ejecutar. Debe ser una address válida (revert `ZeroRecipient` si es `0x0`). |
+| **Cantidad (ETH)** | `4` | Monto que se transferirá al beneficiario. Debe ser > 0 (revert `ZeroAmount`). No puede exceder el balance del DAO al ejecutar. |
+| **Deadline** | déjala en el valor por defecto (ahora + 1 h) o pon una fecha/hora futura | Cierre de la votación. Debe estar en el futuro (revert `InvalidDeadline`). Tras el deadline **no se puede votar** y empieza a contar el `SECURITY_DELAY` de 1 h antes de poder ejecutar. |
+
+- Pulsa **Crear propuesta** → MetaMask pide **enviar transacción** (paga gas — crear
+  propuesta es acción puntual y sensible al quórum). Confirma.
+- El botón muestra `✓ Propuesta #1`. Aparece en **ProposalList** con su descripción y
+  contadores en 0.
+
+**Paso 3-bis (edge case del brief) — un usuario con <10% NO puede proponer**
+- Importa una 4ª cuenta cualquiera, deposita `1 ETH` (queda con 1/16 ≈ 6%).
+- Intenta crear propuesta → debe fallar con **"No tienes el 10% requerido para crear
+  una propuesta"** (`InsufficientQuorumToPropose`).
+
+**Paso 4 — Alice vota A FAVOR (gasless)** 🎯
+- Con la cuenta **Alice**, en la propuesta #1 pulsa el botón verde **"A favor"**.
+- MetaMask abre una ventana de **firma de datos tipados (EIP-712)**, *no* de envío de
+  transacción. **No te cobra gas.** Firma.
+- El voto se manda a `/api/relay`; el relayer paga el gas. `forVotes` pasa a `1`.
+
+**Paso 5 — Bob vota EN CONTRA (gasless)**
+- Cambia a **Bob**, pulsa el botón rojo **"En contra"** → firma EIP-712 (sin gas).
+- `againstVotes` pasa a `1`. (Conteo 1-a-1: Bob suma 1, no su balance.)
+
+**Paso 6 — Charlie deposita 20 ETH y vota A FAVOR (gasless)**
+- Importa/activa **Charlie**, panel "Depositar ETH al DAO" → `20` → **Depositar**
+  (confirma tx, paga gas).
+- En la propuesta #1 pulsa **"A favor"** → firma EIP-712 (sin gas).
+- Estado esperado: `forVotes = 2` (Alice + Charlie), `againstVotes = 1` (Bob),
+  `abstainVotes = 0`. **Cada votante cuenta 1**, da igual que Charlie depositara 20.
+
+**Paso 7 — Esperar deadline + `SECURITY_DELAY` (1 h)**
+- A mano son ~2 h reales: en local **adelantamos el reloj de Anvil** con `cast`:
+
+  ```bash
+  # avanza ~2 h y mina un bloque para que el nuevo timestamp tome efecto
+  cast rpc evm_increaseTime 7260 --rpc-url http://127.0.0.1:8545
+  cast rpc evm_mine --rpc-url http://127.0.0.1:8545
+  ```
+
+**Paso 8 — El daemon ejecuta**
+- Panel **"Ejecutar propuestas elegibles"** → botón → llama a `GET /api/cron/execute`.
+- El daemon escanea: la #1 cumple `now ≥ deadline + SECURITY_DELAY` y
+  `forVotes (2) > againstVotes (1)` → llama `executeProposal(1)`.
+- Verifica el resultado: `Escaneadas: 1 · Ejecutadas: 1`.
+- El **beneficiario** `0x15d3…6A65` recibe **4 ETH**. Compruébalo:
+
+  ```bash
+  cast balance 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
+    --rpc-url http://127.0.0.1:8545 --ether
+  ```
+- La propuesta queda marcada como **ejecutada** (no se puede re-ejecutar).
+
+**Edge cases a verificar (manual o vía tests de Foundry ya escritos):**
 
 - Votar en propuesta inexistente → revert
 - Votar después del deadline → revert
