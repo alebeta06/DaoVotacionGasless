@@ -391,9 +391,11 @@ Cuentas (claves privadas estándar de Anvil):
 
 **Entregables finales:**
 
-- README con capturas
-- `docs/diagramas/` con flowcharts (sequence diagram del flujo gasless)
-- Video o gif de demo
+- [x] E2E automatizado (`web/scripts/e2e.mjs`, `npm run e2e`) + guía manual (esta fase)
+- [x] Guión del video de demo → [`05-guion-demo.md`](./05-guion-demo.md)
+- [x] `docs/diagramas/` con sequence diagram del flujo gasless → [`diagramas/flujo-gasless.md`](./diagramas/flujo-gasless.md)
+- [ ] README con capturas
+- [ ] Video o gif de demo (grabar con el guión)
 
 ---
 
