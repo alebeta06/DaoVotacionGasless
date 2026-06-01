@@ -14,7 +14,7 @@ Una organización autónoma descentralizada (DAO) donde:
 
 ## ¿Cómo funciona la votación gasless?
 
-El usuario **firma** un mensaje EIP-712 en su wallet (gratis, off-chain). Un *relayer* recibe esa firma, la envía al `MinimalForwarder` y **paga el gas** en su nombre. El `DAOVoting` hereda de `ERC2771Context`, lo que le permite extraer la dirección original del firmante en vez de quedarse con la del relayer.
+El usuario **firma** un mensaje EIP-712 en su wallet (gratis, off-chain). Un _relayer_ recibe esa firma, la envía al `MinimalForwarder` y **paga el gas** en su nombre. El `DAOVoting` hereda de `ERC2771Context`, lo que le permite extraer la dirección original del firmante en vez de quedarse con la del relayer.
 
 ```
 Usuario      Frontend         /api/relay         MinimalForwarder      DAOVoting
@@ -38,32 +38,13 @@ Usuario      Frontend         /api/relay         MinimalForwarder      DAOVoting
 
 ![Landing](docs/img/01-landing.png)
 
-**2. Tras depositar — el tesoro y tu aporte**
+**2. DAO conectada**
 
-![Stats del DAO](docs/img/02-stats.png)
+![Dapp conectada](docs/img/02-dapp-conectada.png)
 
-**3. Crear una propuesta** (descripción obligatoria, beneficiario, cantidad, deadline)
+**3. Flujo de la DAO Finalizado**
 
-![Crear propuesta](docs/img/03-crear-propuesta.png)
-
-**4. ⭐ El voto gasless — MetaMask pide FIRMAR, no enviar transacción**
-
-> La pieza estrella: votar no cuesta gas. El usuario firma datos EIP-712; el relayer
-> paga el gas por él.
-
-![Firma EIP-712](docs/img/04-firma-eip712.png)
-
-**5. Contadores de votos** (una persona, un voto)
-
-![Contadores](docs/img/05-contadores.png)
-
-**6. El daemon ejecuta las propuestas aprobadas**
-
-![Ejecución del daemon](docs/img/06-daemon.png)
-
-**7. Modelo contable A+ — el tesoro baja, el aporte no**
-
-![Tesoro tras ejecutar](docs/img/07-tesoro-a-plus.png)
+![Flujo de la DAO Finalizado](docs/img/03-flujo-finalizado.png)
 
 ## Estructura
 
