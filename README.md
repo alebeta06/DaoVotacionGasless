@@ -38,7 +38,10 @@ Usuario      Frontend         /api/relay         MinimalForwarder      DAOVoting
   <a href="https://www.youtube.com/watch?v=0Yt6Gab3BtY">
     <img src="https://img.youtube.com/vi/0Yt6Gab3BtY/maxresdefault.jpg" alt="Ver Demo en YouTube" width="100%" style="max-width: 800px; border-radius: 8px;" />
   </a>
-  <p>🎬 <strong><a href="https://www.youtube.com/watch?v=0Yt6Gab3BtY">Haz clic aquí para ver el video de demostración completo en YouTube</a></strong></p>
+  <br/><br/>
+  <a href="https://www.youtube.com/watch?v=0Yt6Gab3BtY">
+    <img src="https://img.shields.io/badge/Ver_Video_en_YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Ver Video en YouTube" />
+  </a>
 </div>
 
 <br/>
